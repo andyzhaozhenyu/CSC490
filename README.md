@@ -10,12 +10,12 @@ Han Xian Xu Huang, Yuliang Wang, Zhenyu Zhao
 1. Understand the papers
 2. Setup two ML models
 3. Build the training models and algorithms
-4. Lowering data processing time on high-resolution images
+4. Lower data processing time on high-resolution images
 5. Apply our algorithms to actual medical images other than the dataset
 6. Test the accuracy of the training models and algorithms
 7. Compare the results we get to the results mentioned in the papers
 8. Improve the accuracy of the machine learning algorithm
-9. Looking for methods to augment the machine learning algorithms
+9. Look for methods to augment the machine learning algorithms
 10. Explore the possibility of using generative models to abate the class imbalance as mentioned in the paper
 
 ## Name of the dataset
