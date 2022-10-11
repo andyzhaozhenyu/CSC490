@@ -52,6 +52,6 @@ Zhenyu Zhao, Han Xian Xu Huang, Yuliang Wang
 Zhenyu Zhao, Han Xian Xu Huang, Yuliang Wang
 
 ## Distribution of tasks for this report
-Han Xian Xu Huang: Use the model in the first paper to train the dataset. Use graphs to display the results.
-Zhenyu Zhao: Use the model in the second paper to train the dataset. Use graphs to display the results.
+Han Xian Xu Huang: Use the model in the first paper to train the dataset. Use graphs to display the results.  
+Zhenyu Zhao: Use the model in the second paper to train the dataset. Use graphs to display the results.  
 Yuliang Wang: Based on the results provided by the two training models, do some analysis to determine potential project topics and prepare for the presentation. 
