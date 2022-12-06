@@ -15,7 +15,6 @@
 from __future__ import print_function, division
 
 import datetime
-
 # #start = datetime.datetime.now()
 import argparse
 import torch
@@ -47,7 +46,7 @@ from tqdm import tqdm
 from torchsummary import summary
 from torch.autograd import Variable
 
-from dataset.Dataloader_with_path import ImageFolderWithPaths as dataset
+from dataset.dataloader_with_path import ImageFolderWithPaths as dataset
 
 
 #======================================
@@ -56,8 +55,8 @@ from dataset.Dataloader_with_path import ImageFolderWithPaths as dataset
 parser = argparse.ArgumentParser()
 
 # Hardware
-parser.add_argument("--device", default="gpu", help="Device to run the code")
-parser.add_argument("--device_id", type=int, default=0, help="")
+parser.add_argument("--device", default="cpu", help="Device to run the code")
+parser.add_argument("--device_id", type=int, default=-1, help="")
 
 
 parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store current python file
@@ -65,19 +64,22 @@ parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store curre
 
 # Directories
 parser.add_argument("--data_train_folder", 
-                default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
+                # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
+                default="../data/OneImage",
                 help="Train data folder")
 
 parser.add_argument("--data_val_folder", 
-                default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_1",
+                # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_1",
+                default="../data/OneImage",
                 help="Validation data folder")
 
 parser.add_argument("--out_dir", 
-                default="/work/vajira/DATA/kvasir_capsule/output",
+                # default="/work/vajira/DATA/kvasir_capsule/output",
+                default="../kvasir_capsule/output",
                 help="Main output dierectory")
 
 parser.add_argument("--tensorboard_dir", 
-                default="/work/vajira/DATA/kvasir_capsule/tensorboard",
+                default="kvasir_capsule/tensorboard",
                 help="Folder to save output of tensorboard")
 
 # Hyper parameters
