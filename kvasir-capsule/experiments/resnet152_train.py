@@ -5,86 +5,69 @@
 #  # Description ##################
 #  # pythroch resnet18 training
 
-
-
-
-
-
 ###########################################
 
 from __future__ import print_function, division
 
-import datetime
 # #start = datetime.datetime.now()
 import argparse
+import copy
+import itertools
+import os
+
+# from pandas_ml import ConfusionMatrix
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn.metrics as mtc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.optim import lr_scheduler
-from torchvision import datasets, models, transforms, utils
-import pickle
-#from pandas_ml import ConfusionMatrix
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import time
-import os
-import copy
-import sys
-import yaml
-import pandas as pd
-import numpy as np
-
-import sklearn.metrics as mtc
-from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
-import itertools
-from multiprocessing import Process, freeze_support
-from torch.utils.tensorboard import SummaryWriter
-
-from tqdm import tqdm
-from torchsummary import summary
+from sklearn.metrics import confusion_matrix
 from torch.autograd import Variable
+from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
+from torchsummary import summary
+from torchvision import models, transforms
+from tqdm import tqdm
 
 from dataset.dataloader_with_path import ImageFolderWithPaths as dataset
 
-
-#======================================
+# ======================================
 # Get and set all input parameters
-#======================================
+# ======================================
 parser = argparse.ArgumentParser()
 
 # Hardware
 parser.add_argument("--device", default="cpu", help="Device to run the code")
 parser.add_argument("--device_id", type=int, default=-1, help="")
-
-
-parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store current python file
-
+parser.add_argument("--py_file", default=os.path.abspath(__file__))  # store current python file
 
 # Directories
-parser.add_argument("--data_train_folder", 
-                # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
-                default="../data/original dataset/train",
-                ## second expriement
-                ## "../data/original dataset"
-                ## third expriement
-                ## "train original and GAN"
-                help="Train data folder")
+parser.add_argument("--data_train_folder",
+                    # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
+                    default="../data/original dataset/train",
+                    ## second expriement
+                    ## "../data/original dataset"
+                    ## third expriement
+                    ## "train original and GAN"
+                    help="Train data folder")
 
-parser.add_argument("--data_val_folder", 
-                # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_1",
-                default="../data/valid",
-                help="Validation data folder")
+parser.add_argument("--data_val_folder",
+                    # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_1",
+                    default="../data/valid",
+                    help="Validation data folder")
 
-parser.add_argument("--out_dir", 
-                # default="/work/vajira/DATA/kvasir_capsule/output",
-                default="../kvasir_capsule/output",
-                help="Main output dierectory")
+parser.add_argument("--out_dir",
+                    # default="/work/vajira/DATA/kvasir_capsule/output",
+                    default="../kvasir_capsule/output",
+                    help="Main output dierectory")
 
-parser.add_argument("--tensorboard_dir", 
-                default="kvasir_capsule/tensorboard",
-                help="Folder to save output of tensorboard")
+parser.add_argument("--tensorboard_dir",
+                    default="kvasir_capsule/tensorboard",
+                    help="Folder to save output of tensorboard")
 
 # Hyper parameters
 parser.add_argument("--bs", type=int, default=32, help="Mini batch size")
@@ -96,46 +79,46 @@ parser.add_argument("--lr_sch_factor", type=float, default=0.1, help="Factor to 
 parser.add_argument("--lr_sch_patience", type=int, default=10, help="Num of epochs to be patience for updating lr")
 parser.add_argument("--lr_to_stop", type=float, default=0.00001, help="Num of epochs to be patience for updating lr")
 
-
-# Action handling 
+# Action handling
 parser.add_argument("--num_epochs", type=int, default=2000, help="Numbe of epochs to train")
 # parser.add_argument("--start_epoch", type=int, default=0, help="Start epoch in retraining")
-parser.add_argument("action", type=str, help="Select an action to run", choices=["train", "retrain", "test", "check", "prepare"])
+parser.add_argument("action", type=str, help="Select an action to run",
+                    choices=["train", "retrain", "test", "check", "prepare"])
 parser.add_argument("--checkpoint_interval", type=int, default=25, help="Interval to save checkpoint models")
-#parser.add_argument("--val_fold", type=str, default="0", help="Select the validation fold", choices=["fold_1", "fold_2", "fold_3"])
-#parser.add_argument("--all_folds", default=["0", "1"], help="list of all folds available in data folder")
+# parser.add_argument("--val_fold", type=str, default="0", help="Select the validation fold", choices=["fold_1", "fold_2", "fold_3"])
+# parser.add_argument("--all_folds", default=["0", "1"], help="list of all folds available in data folder")
 parser.add_argument("--test_checkpoint", help="Checkpoint to test or generate results")
-parser.add_argument("--weights", default=[0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809], help="Weights for class")
+parser.add_argument("--weights",
+                    default=[0.0285, 1.0000, 0.1068, 0.1667, 0.0373, 0.0196, 0.0982, 0.0014, 0.0235, 0.0236, 0.0809],
+                    help="Weights for class")
 opt = parser.parse_args()
 
-#==========================================
+# ==========================================
 # Device handling
-#==========================================
+# ==========================================
 torch.cuda.set_device(opt.device_id)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-#===========================================
+# ===========================================
 # Folder handling
-#===========================================
+# ===========================================
 
-#make output folder if not exist
+# make output folder if not exist
 os.makedirs(opt.out_dir, exist_ok=True)
 
-
-# make subfolder in the output folder 
-py_file_name = opt.py_file.split("/")[-1] # Get python file name (soruce code name)
+# make subfolder in the output folder
+# py_file_name = opt.py_file.split("/")[-1] # Mac: Get python file name (soruce code name)
+py_file_name = opt.py_file.split("/")[-1][-3]  # Windows: Get python file name (soruce code name)
 checkpoint_dir = os.path.join(opt.out_dir, py_file_name + "/checkpoints")
 os.makedirs(checkpoint_dir, exist_ok=True)
 
 # make tensorboard subdirectory for the experiment
 tensorboard_exp_dir = os.path.join(opt.tensorboard_dir, py_file_name)
-os.makedirs( tensorboard_exp_dir, exist_ok=True)
+os.makedirs(tensorboard_exp_dir, exist_ok=True)
 
-
-
-#==========================================
+# ==========================================
 # Tensorboard
-#==========================================
+# ==========================================
 # Initialize summary writer
 writer = SummaryWriter(tensorboard_exp_dir)
 
@@ -145,13 +128,10 @@ writer = SummaryWriter(tensorboard_exp_dir)
 ###########################################
 
 
-
-
-#==========================================
+# ==========================================
 # Prepare Data
-#==========================================
+# ==========================================
 def prepare_data():
-
     data_transforms = {
         'train': transforms.Compose([
             transforms.Resize(256),
@@ -177,14 +157,13 @@ def prepare_data():
 
     # Validation dataset
     dataset_val = dataset(opt.data_val_folder, data_transforms["validation"])
-                                                
 
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=opt.bs,
-                                                    shuffle=True, num_workers=opt.num_workers)
+                                                   shuffle=True, num_workers=opt.num_workers)
 
     dataloader_val = torch.utils.data.DataLoader(dataset_val, batch_size=opt.bs,
-                                                    shuffle=False, num_workers=opt.num_workers)
-                    
+                                                 shuffle=False, num_workers=opt.num_workers)
+
     train_size = len(dataset_train)
     val_size = len(dataset_val)
 
@@ -194,11 +173,9 @@ def prepare_data():
     print("dataset train class order= ", dataset_train.class_to_idx)
     print("dataset val class order= ", dataset_train.class_to_idx)
 
-    #exit() # just for testing
+    # exit() # just for testing
 
-   
-    return {"train":dataloader_train, "val":dataloader_val, "dataset_size":{"train": train_size, "val":val_size} }
-
+    return {"train": dataloader_train, "val": dataloader_val, "dataset_size": {"train": train_size, "val": val_size}}
 
 
 #########################################################################
@@ -229,16 +206,15 @@ input()
 exit()
 '''
 
-#==========================================================
+
+# ==========================================================
 # Train model
-#===========================================================
+# ===========================================================
 
-def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_acc=0.0, start_epoch = 0):
-
+def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_acc=0.0, start_epoch=0):
     best_model_wts = copy.deepcopy(model.state_dict())
-    
 
-    for epoch in range(start_epoch , start_epoch + opt.num_epochs ):
+    for epoch in range(start_epoch, start_epoch + opt.num_epochs):
 
         for phase in ["train", "val"]:
 
@@ -248,11 +224,9 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
             else:
                 model.eval()
                 dataloader = dataloaders["val"]
-            
-            
+
             running_loss = 0.0
             running_corrects = 0
-
 
             for i, data in enumerate(dataloader, 0):
 
@@ -285,26 +259,26 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
             epoch_acc = running_corrects.double() / dataloaders["dataset_size"][phase]
 
             # update tensorboard writer
-            writer.add_scalars("Loss", {phase:epoch_loss}, epoch)
-            writer.add_scalars("Accuracy" , {phase:epoch_acc}, epoch)
+            writer.add_scalars("Loss", {phase: epoch_loss}, epoch)
+            writer.add_scalars("Accuracy", {phase: epoch_acc}, epoch)
 
-             # update the lr based on the epoch loss
-            if phase == "val": 
+            # update the lr based on the epoch loss
+            if phase == "val":
 
                 # keep best model weights
                 if epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(model.state_dict())
-                    best_epoch =epoch
+                    best_epoch = epoch
                     best_epoch_loss = epoch_loss
                     best_epoch_acc = epoch_acc
                     print("Found a better model")
 
                 # Get current lr
                 lr = optimizer.param_groups[0]['lr']
-                #print("lr=", lr)
+                # print("lr=", lr)
                 writer.add_scalar("LR", lr, epoch)
-                scheduler.step(epoch_loss) 
+                scheduler.step(epoch_loss)
 
                 # Early stop if lr is too small
                 if lr <= opt.lr_to_stop:
@@ -313,37 +287,34 @@ def train_model(model, optimizer, criterion, dataloaders: dict, scheduler, best_
                     print("Best model saved")
                     # print("LR reached to :", current_lr)
                     print("Model exits")
-                    return 
-            
+                    return
 
-
-            # Print output
+                    # Print output
             print('Epoch:\t  %d |Phase: \t %s | Loss:\t\t %.4f | Acc:\t %.4f '
-                      % (epoch, phase, epoch_loss, epoch_acc))
-    
+                  % (epoch, phase, epoch_loss, epoch_acc))
+
     save_model(best_model_wts, best_epoch, best_epoch_loss, best_epoch_acc)
 
-            
-#===============================================
+
+# ===============================================
 # Prepare models
-#===============================================
+# ===============================================
 
 def prepare_model():
     model = models.resnet152(pretrained=True)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, 11)
     model = model.to(device)
-    
+
     return model
 
 
-
-#====================================
+# ====================================
 # Run training process
-#====================================
+# ====================================
 def run_train(retrain=False):
     model = prepare_model()
-    
+
     dataloaders = prepare_data()
 
     # optimizer = optim.Adam(model.parameters(), lr=opt.lr , weight_decay=opt.weight_decay)
@@ -352,11 +323,12 @@ def run_train(retrain=False):
 
     # criterion =  nn.MSELoss() # backprop loss calculation
     weight_tensor = torch.FloatTensor(opt.weights).to(device)
-    criterion = nn.CrossEntropyLoss(weight=weight_tensor) # weight=weights
+    criterion = nn.CrossEntropyLoss(weight=weight_tensor)  # weight=weights
     # criterion_validation = nn.L1Loss() # Absolute error for real loss calculations
 
     # LR shceduler
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=opt.lr_sch_factor, patience=opt.lr_sch_patience, verbose=True)
+    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=opt.lr_sch_factor,
+                                               patience=opt.lr_sch_patience, verbose=True)
 
     # call main train loop
 
@@ -368,18 +340,18 @@ def run_train(retrain=False):
         start_epoch = checkpoint["epoch"]
         loss = checkpoint["loss"]
         acc = checkpoint["acc"]
-        train_model(model,optimizer,criterion, dataloaders, scheduler, best_acc=acc, start_epoch=start_epoch)
+        train_model(model, optimizer, criterion, dataloaders, scheduler, best_acc=acc, start_epoch=start_epoch)
 
     else:
-        train_model(model,optimizer,criterion, dataloaders, scheduler, best_acc=0.0, start_epoch=0)
+        train_model(model, optimizer, criterion, dataloaders, scheduler, best_acc=0.0, start_epoch=0)
 
 
-#=====================================
+# =====================================
 # Save models
-#=====================================
-def save_model(model_weights,  best_epoch,  best_epoch_loss, best_epoch_acc):
-   
-    check_point_name = py_file_name + "_epoch:{}_acc:{}.pt".format(best_epoch, best_epoch_acc) # get code file name and make a name
+# =====================================
+def save_model(model_weights, best_epoch, best_epoch_loss, best_epoch_acc):
+    check_point_name = py_file_name + "_epoch:{}_acc:{}.pt".format(best_epoch,
+                                                                   best_epoch_acc)  # get code file name and make a name
     check_point_path = os.path.join(checkpoint_dir, check_point_name)
     # save torch model
     torch.save({
@@ -392,35 +364,32 @@ def save_model(model_weights,  best_epoch,  best_epoch_loss, best_epoch_acc):
     }, check_point_path)
 
 
-
-
-
-#=====================================
+# =====================================
 # Check model
-#=====================================
+# =====================================
 def check_model_graph():
     model = prepare_model()
 
-    summary(model, (3, 224, 224)) # this run on GPU
+    summary(model, (3, 224, 224))  # this run on GPU
     model = model.to('cpu')
-    #dataloaders = prepare_data()
-    #sample = next(iter(dataloaders["train"]))
+    # dataloaders = prepare_data()
+    # sample = next(iter(dataloaders["train"]))
 
-    #inputs = sample["features"]
-   # inputs = inputs.to(device, torch.float)
-    #print(inputs.shape)
+    # inputs = sample["features"]
+    # inputs = inputs.to(device, torch.float)
+    # print(inputs.shape)
     print(model)
     dummy_input = Variable(torch.rand(13, 3, 224, 224))
-    
-    writer.add_graph(model, dummy_input) # this need the model on CPU
 
-#===============================================
+    writer.add_graph(model, dummy_input)  # this need the model on CPU
+
+
+# ===============================================
 #  Model testing method
-#===============================================
+# ===============================================
 
 def test_model():
-    
-    test_model_checkpoint = opt.test_checkpoint #input("Please enter the path of test model:")
+    test_model_checkpoint = opt.test_checkpoint  # input("Please enter the path of test model:")
     checkpoint = torch.load(test_model_checkpoint)
 
     model = prepare_model()
@@ -437,16 +406,12 @@ def test_model():
     all_predictions_d = torch.tensor([], dtype=torch.long).to(device)
     all_predictions_probabilities_d = torch.tensor([], dtype=torch.float).to(device)
 
-
-
     with torch.no_grad():
         for i, data in tqdm(enumerate(test_dataloader, 0)):
-
             inputs, labels, paths = data
             # print(labels)
             inputs = inputs.to(device)
             labels = labels.to(device)
-
 
             outputs = model(inputs)
             outputs = F.softmax(outputs, 1)
@@ -457,7 +422,7 @@ def test_model():
             all_labels_d = torch.cat((all_labels_d, labels), 0)
             all_predictions_d = torch.cat((all_predictions_d, predicted), 0)
             all_predictions_probabilities_d = torch.cat((all_predictions_probabilities_d, predicted_probability), 0)
-            #all_timePerFrame_host = all_timePerFrame_host + [time_per_image]
+            # all_timePerFrame_host = all_timePerFrame_host + [time_per_image]
             # print("testing")
 
     print('copying some data back to cpu for generating confusion matrix...')
@@ -465,13 +430,9 @@ def test_model():
     y_predicted = all_predictions_d.cpu()  # to('cpu')
     testset_predicted_probabilites = all_predictions_probabilities_d.cpu()  # to('cpu')
 
-
-    #return y_predicted, testset_predicted_probabilites, all_timePerFrame_host
-
+    # return y_predicted, testset_predicted_probabilites, all_timePerFrame_host
 
     cm = confusion_matrix(y_true, y_predicted)  # confusion matrix
-
-
 
     print('Accuracy of the network on the %d test images: %f %%' % (total, (
             100.0 * correct / total)))
@@ -480,13 +441,11 @@ def test_model():
 
     print("taking class names to plot CM")
 
-    class_names = test_dataloader.dataset.classes #test_datasets.classes  # taking class names for plotting confusion matrix
+    class_names = test_dataloader.dataset.classes  # test_datasets.classes  # taking class names for plotting confusion matrix
 
     print("Generating confution matrix")
 
     plot_confusion_matrix(cm, classes=class_names, title='my confusion matrix')
-
-    
 
     ##################################################################
     # classification report
@@ -498,8 +457,8 @@ def test_model():
     #################################################################
     print("Printing standard metric for medico task")
 
-    print("Accuracy =",mtc.accuracy_score(y_true, y_predicted))
-    print("Precision score =", mtc.precision_score(y_true,y_predicted, average="weighted"))
+    print("Accuracy =", mtc.accuracy_score(y_true, y_predicted))
+    print("Precision score =", mtc.precision_score(y_true, y_predicted, average="weighted"))
     print("Recall score =", mtc.recall_score(y_true, y_predicted, average="weighted"))
     print("F1 score =", mtc.f1_score(y_true, y_predicted, average="weighted"))
     print("Specificity =")
@@ -510,26 +469,23 @@ def test_model():
     #################################################################
     print("Printing standard metric for medico task")
 
-
     print("1. Recall score (REC) =", mtc.recall_score(y_true, y_predicted, average="weighted"))
     print("2. Precision score (PREC) =",
-            mtc.precision_score(y_true, y_predicted, average="weighted"))
+          mtc.precision_score(y_true, y_predicted, average="weighted"))
     print("3. Specificity (SPEC) =")
     # print("4. Accuracy (ACC) =", mtc.accuracy_score(y_true, y_predicted, weights))
     print("5. Matthews correlation coefficient(MCC) =", mtc.matthews_corrcoef(y_true, y_predicted))
 
     print("6. F1 score (F1) =", mtc.f1_score(y_true, y_predicted, average="weighted"))
 
-    
     print('Finished.. ')
 
-    #====================================================================
+    # ====================================================================
     # Writing to a file
-    #=====================================================================
-    
+    # =====================================================================
+
     np.set_printoptions(linewidth=np.inf)
     with open("%s/%s_evaluation.csv" % (opt.out_dir, py_file_name), "w") as f:
-
         f.write(np.array2string(mtc.confusion_matrix(y_true, y_predicted), separator=", "))
 
         f.write("\n\n\n\n")
@@ -537,7 +493,6 @@ def test_model():
         f.write("Precision: %s\n" % mtc.precision_score(y_true, y_predicted, average="macro"))
         f.write("Recall: %s\n" % mtc.recall_score(y_true, y_predicted, average="macro"))
         f.write("F1-Score: %s\n\n" % mtc.f1_score(y_true, y_predicted, average="macro"))
-
 
         f.write("--- Micro Averaged Resutls ---\n")
         f.write("Precision: %s\n" % mtc.precision_score(y_true, y_predicted, average="micro"))
@@ -550,22 +505,18 @@ def test_model():
     f.close()
     print("Report generated")
 
-    #==========================================================================
+    # ==========================================================================
 
 
-
-
-#==============================================
+# ==============================================
 # Prepare submission file with probabilities
-#===============================================
+# ===============================================
 def prepare_prediction_file():
-
     if opt.bs != 1:
         print("Please run with bs = 1")
         exit()
 
-
-    test_model_checkpoint = opt.test_checkpoint #input("Please enter the path of test model:")
+    test_model_checkpoint = opt.test_checkpoint  # input("Please enter the path of test model:")
     checkpoint = torch.load(test_model_checkpoint)
 
     model = prepare_model()
@@ -580,54 +531,47 @@ def prepare_prediction_file():
     df = pd.DataFrame(columns=["filename", "predicted-label", "actual-label"] + class_names)
 
     print(df.head())
-   #  exit()
+    #  exit()
 
     with torch.no_grad():
         for i, data in tqdm(enumerate(test_dataloader, 0)):
-            
             inputs, labels, paths = data
-                
 
             df_temp = pd.DataFrame(columns=["filename", "predicted-label", "actual-label"] + class_names)
 
-
-            #print("paths:", paths)
+            # print("paths:", paths)
             filename = [list(paths)[0].split("/")[-1]]
-            #print("filenames:", filename)
-            
-            df_temp["filename"] = filename
+            # print("filenames:", filename)
 
-           
+            df_temp["filename"] = filename
 
             inputs = inputs.to(device)
             labels = labels.to(device)
 
-
             outputs = model(inputs)
             outputs = F.softmax(outputs, 1)
             predicted_probability, predicted = torch.max(outputs.data, 1)
-            
+
             df_temp["predicted-label"] = class_names[predicted.item()]
             df_temp["actual-label"] = class_names[labels.item()]
-            
 
             # print("actual label:", labels.item())
-            #print("predicted label:", predicted.item())
+            # print("predicted label:", predicted.item())
             # print("probabilities :", outputs.cpu())
 
             probabilities = outputs.cpu().squeeze()
             probabilities = probabilities.tolist()
             probabilities = np.around(probabilities, decimals=3)
-            #print(probabilities)
+            # print(probabilities)
 
             df_temp[class_names] = probabilities
 
-            #record = record + [class_names[labels.item()]] + [class_names[predicted.item()]] 
+            # record = record + [class_names[labels.item()]] + [class_names[predicted.item()]]
 
-            #print(record)
-            #print(df_temp.head())
+            # print(record)
+            # print(df_temp.head())
             df = df.append(df_temp)
-           # break
+        # break
 
         print(df.head())
         print("length of DF:", len(df))
@@ -640,7 +584,6 @@ def prepare_prediction_file():
 ##########################################################
 
 def prepare_submission_file(image_names, predicted_labels, max_probability, time_per_image, submit_dir, data_classes):
-
     predicted_label_names = []
 
     for i in predicted_labels:
@@ -649,16 +592,18 @@ def prepare_submission_file(image_names, predicted_labels, max_probability, time
     #  print(predicted_label_names)
 
     submission_dataframe = pd.DataFrame(np.column_stack([image_names,
-                                                            predicted_label_names,
-                                                            max_probability,
-                                                            time_per_image]),
-                                    columns=['images', 'labels', 'PROB', 'time'])
-    #print("image names:{0}".format(image_names))
+                                                         predicted_label_names,
+                                                         max_probability,
+                                                         time_per_image]),
+                                        columns=['images', 'labels', 'PROB', 'time'])
+    # print("image names:{0}".format(image_names))
 
     submission_dataframe.to_csv(os.path.join(submit_dir, "method_3_test_output"), index=False)
 
     print(submission_dataframe)
     print("successfully created submission file")
+
+
 ###########################################################
 
 ###########################################################
@@ -666,15 +611,14 @@ def prepare_submission_file(image_names, predicted_labels, max_probability, time
 ###########################################################
 
 
-
 ############################################################
 # Plot confusion matrix - method
 ############################################################
 def plot_confusion_matrix(cm, classes,
-                            normalize=False,
-                            title='Confusion matrix',
-                            cmap=plt.cm.Blues,
-                            plt_size=[10,10]):
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues,
+                          plt_size=[10, 10]):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -699,8 +643,8 @@ def plot_confusion_matrix(cm, classes,
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
         plt.text(j, i, format(cm[i, j], fmt),
-                    horizontalalignment="center",
-                    color="white" if cm[i, j] > thresh else "black")
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
 
     plt.tight_layout()
     plt.ylabel('True label')
@@ -709,8 +653,6 @@ def plot_confusion_matrix(cm, classes,
     figure = plt.gcf()
     writer.add_figure("Confusion Matrix", figure)
     print("Finished confusion matrix drawing...")
-
-
 
 
 if __name__ == '__main__':
@@ -723,11 +665,11 @@ if __name__ == '__main__':
     if opt.action == "train":
         print("Training process is strted..!")
         run_train()
-       # pass
+    # pass
     elif opt.action == "retrain":
         print("Retrainning process is strted..!")
         run_train(retrain=True)
-       # pass
+    # pass
     elif opt.action == "test":
         print("Inference process is strted..!")
         test_model()
