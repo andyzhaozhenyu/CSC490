@@ -1,3 +1,7 @@
+## Dataset
+[The Kvasir-Capsule Dataset](https://osf.io/dv2ag/) is the largest publicly released VCE dataset. In total, the dataset contains 47,238 labeled images and 117 videos, where it captures anatomical landmarks and pathological and normal findings. The results is more than 4,741,621 images and video frames all together.
+
+
 ## Data distribution
 All the training sets and validation sets are stored in the data folder. 
 
