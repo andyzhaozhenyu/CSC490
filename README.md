@@ -64,10 +64,10 @@ This command is used to test the model which uses 500 images from the original d
 [Poster](docs/poster_final.pptx)
 
 ## Reference
+- https://osf.io/dv2ag/
 - https://github.com/simula/kvasir-capsule
 - https://github.com/eriklindernoren/Keras-GAN/tree/master/dcgan
 - https://www.kaggle.com/code/waltermaffy/dcgan-with-keras/notebook#GAN
-- https://osf.io/dv2ag/
 
 ## Contribution
 ***Zhenyu Zhao:***
