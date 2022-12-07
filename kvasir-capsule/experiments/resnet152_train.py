@@ -65,7 +65,7 @@ parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store curre
 # Directories
 parser.add_argument("--data_train_folder", 
                 # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
-                default="../data/original dataset",
+                default="../data/original dataset/train",
                 ## second expriement
                 ## "../data/original dataset"
                 ## third expriement
