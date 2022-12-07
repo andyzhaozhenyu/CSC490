@@ -8,5 +8,5 @@ torch
 torchsummary
 torchvision
 tqdm
-tensorflow
+tensorflow==2.10
 tensorboard
