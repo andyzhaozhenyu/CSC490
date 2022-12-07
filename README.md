@@ -89,4 +89,57 @@ This command is used to test the model which uses 500 images from the original d
 - https://github.com/simula/kvasir-capsule
 
 ## License
+
 [MIT](https://choosealicense.com/licenses/mit/)
+
+
+
+
+
+## **Contribution**
+
+***Zhenyu Zhao:***
+
+
+
+- *Create Training set and validation set for both models*
+- Read papers
+
+- Train the classfication model
+
+- Train the GAN model
+
+- Modify the image from the GAN model
+
+- Compare result
+
+- Make visual graph
+
+- Make poster
+
+- Originze GitHub
+
+  
+
+***Han Xian Xu Huang:***
+
+- Modify GAN so it takes and produces Kvasir-Capsule images
+
+- Read papers
+
+- Create Training set for GAN model
+
+- Run GAN to generate different classes of images
+
+- Make poster
+
+- Originze GitHub
+
+  
+
+***Yuliang Wang:***
+
+- Read papers 
+- Collect and arrange papers
+- Read papers
+- Make poster
