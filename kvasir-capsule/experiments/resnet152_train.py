@@ -65,12 +65,16 @@ parser.add_argument("--py_file",default=os.path.abspath(__file__)) # store curre
 # Directories
 parser.add_argument("--data_train_folder", 
                 # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_0",
-                default="../data/OneImage",
+                default="../data/original dataset",
+                ## second expriement
+                ## "../data/original dataset"
+                ## third expriement
+                ## "train original and GAN"
                 help="Train data folder")
 
 parser.add_argument("--data_val_folder", 
                 # default="/work/vajira/DATA/kvasir_capsule/data/new_splits/split_1",
-                default="../data/OneImage",
+                default="../data/valid",
                 help="Validation data folder")
 
 parser.add_argument("--out_dir", 
